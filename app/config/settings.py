@@ -8,6 +8,10 @@ HEADLESS = True
 TIMEOUT = 30000
 
 BASE_URL = "https://listado.mercadolibre.com.mx"
+# Mercado Libre API
+ML_API_BASE_URL = "https://api.mercadolibre.com"
+ML_SITE_ID = "MLM"
+ML_ACCESS_TOKEN = os.getenv("ML_ACCESS_TOKEN")
 
 USER_AGENT = (
     "Mozilla/5.0 "
