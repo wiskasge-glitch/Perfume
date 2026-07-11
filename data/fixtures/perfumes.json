@@ -1,0 +1,50 @@
+[
+    {
+        "ml_id": "TEST001",
+        "title": "Versace Eros Eau de Toilette 100 ml",
+        "brand": "Versace",
+        "price": 1299.0,
+        "original_price": 1699.0,
+        "discount": 23.54,
+        "url": "https://example.com/perfume/test001",
+        "image": "",
+        "seller": "Amora Beauty Market",
+        "trusted_seller": true,
+        "mercado_lider": true,
+        "full": true,
+        "condition": "Nuevo",
+        "score": 0.0
+    },
+    {
+        "ml_id": "TEST002",
+        "title": "Lattafa Khamrah Eau de Parfum 100 ml",
+        "brand": "Lattafa",
+        "price": 799.0,
+        "original_price": 1099.0,
+        "discount": 27.3,
+        "url": "https://example.com/perfume/test002",
+        "image": "",
+        "seller": "Mundo Perfumes",
+        "trusted_seller": true,
+        "mercado_lider": true,
+        "full": false,
+        "condition": "Nuevo",
+        "score": 0.0
+    },
+    {
+        "ml_id": "TEST003",
+        "title": "Decant Dior Sauvage 10 ml",
+        "brand": "Dior",
+        "price": 199.0,
+        "original_price": null,
+        "discount": null,
+        "url": "https://example.com/perfume/test003",
+        "image": "",
+        "seller": "Vendedor desconocido",
+        "trusted_seller": false,
+        "mercado_lider": false,
+        "full": false,
+        "condition": "Nuevo",
+        "score": 0.0
+    }
+]
