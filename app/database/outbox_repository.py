@@ -1,9 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config.settings import (
+    OUTBOX_MAX_ATTEMPTS,
+    OUTBOX_RETRY_DELAYS_SECONDS,
+)
 from app.database.models import NotificationOutboxRecord
 from app.notifier.formatter import TelegramOfferMessage
 
@@ -80,6 +84,10 @@ class NotificationOutboxRepository:
         self,
         event_key: str,
     ) -> NotificationOutboxRecord | None:
+        """
+        Busca una notificación mediante su clave única.
+        """
+
         statement = select(
             NotificationOutboxRecord
         ).where(
@@ -97,7 +105,10 @@ class NotificationOutboxRepository:
         """
         Guarda una notificación pendiente.
 
-        Devuelve False cuando el evento ya estaba registrado.
+        Devuelve:
+        - El registro encontrado o creado.
+        - True si se creó una nueva notificación.
+        - False si el evento ya estaba registrado.
         """
 
         existing_record = await self.get_by_event_key(
@@ -126,7 +137,8 @@ class NotificationOutboxRepository:
         limit: int = 20,
     ) -> list[int]:
         """
-        Obtiene los IDs de las notificaciones pendientes.
+        Obtiene notificaciones pendientes cuyo tiempo
+        de reintento ya se cumplió.
         """
 
         if limit <= 0:
@@ -135,7 +147,7 @@ class NotificationOutboxRepository:
             )
 
         statement = (
-            select(NotificationOutboxRecord.id)
+            select(NotificationOutboxRecord)
             .where(
                 NotificationOutboxRecord.status
                 == "pending"
@@ -144,17 +156,66 @@ class NotificationOutboxRepository:
                 NotificationOutboxRecord.created_at,
                 NotificationOutboxRecord.id,
             )
-            .limit(limit)
+            .limit(max(limit * 10, 100))
         )
 
-        result = await self.session.scalars(statement)
+        result = await self.session.scalars(
+            statement
+        )
 
-        return list(result)
+        records = list(result.all())
+        now = datetime.now(timezone.utc)
+
+        eligible_ids: list[int] = []
+
+        for record in records:
+            delay_index = min(
+                record.attempts,
+                len(OUTBOX_RETRY_DELAYS_SECONDS) - 1,
+            )
+
+            delay_seconds = (
+                OUTBOX_RETRY_DELAYS_SECONDS[
+                    delay_index
+                ]
+            )
+
+            reference_time = (
+                record.updated_at
+                or record.created_at
+            )
+
+            # SQLite puede devolver fechas sin zona horaria.
+            if reference_time.tzinfo is None:
+                reference_time = reference_time.replace(
+                    tzinfo=timezone.utc
+                )
+
+            next_attempt_at = (
+                reference_time
+                + timedelta(
+                    seconds=delay_seconds
+                )
+            )
+
+            if now < next_attempt_at:
+                continue
+
+            eligible_ids.append(record.id)
+
+            if len(eligible_ids) >= limit:
+                break
+
+        return eligible_ids
 
     async def get_by_id(
         self,
         notification_id: int,
     ) -> NotificationOutboxRecord | None:
+        """
+        Busca una notificación mediante su ID interno.
+        """
+
         return await self.session.get(
             NotificationOutboxRecord,
             notification_id,
@@ -186,17 +247,25 @@ class NotificationOutboxRepository:
         self,
         record: NotificationOutboxRecord,
         error: str,
-        maximum_attempts: int = 5,
+        maximum_attempts: int = OUTBOX_MAX_ATTEMPTS,
     ) -> None:
         """
         Registra un intento fallido.
 
-        Mientras no alcance el límite, permanece pendiente.
+        Mientras no alcance el máximo de intentos,
+        la notificación permanece pendiente.
         """
+
+        if maximum_attempts <= 0:
+            raise ValueError(
+                "El máximo de intentos debe ser positivo."
+            )
 
         record.attempts += 1
         record.last_error = error[:1000]
-        record.updated_at = datetime.now(timezone.utc)
+        record.updated_at = datetime.now(
+            timezone.utc
+        )
 
         if record.attempts >= maximum_attempts:
             record.status = "failed"
@@ -209,12 +278,26 @@ class NotificationOutboxRepository:
         self,
         status: str,
     ) -> int:
+        """
+        Cuenta las notificaciones según su estado.
+
+        Estados esperados:
+        - pending
+        - sent
+        - failed
+        """
+
         statement = select(
-            func.count(NotificationOutboxRecord.id)
+            func.count(
+                NotificationOutboxRecord.id
+            )
         ).where(
-            NotificationOutboxRecord.status == status
+            NotificationOutboxRecord.status
+            == status
         )
 
-        value = await self.session.scalar(statement)
+        value = await self.session.scalar(
+            statement
+        )
 
         return int(value or 0)

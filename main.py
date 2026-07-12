@@ -1,8 +1,23 @@
+import argparse
 import asyncio
 
+from app.config.settings import (
+    BOT_RUN_INTERVAL_SECONDS,
+)
 from app.database.session import DatabaseManager
 from app.engine.offer_scorer import OfferScorer
+from app.notifier.telegram import (
+    TelegramClient,
+    TelegramClientError,
+)
+from app.scheduler.runner import BotScheduler
+from app.services.application_service import (
+    ApplicationService,
+)
 from app.services.catalog_service import CatalogService
+from app.services.notification_dispatcher_service import (
+    NotificationDispatcherService,
+)
 from app.services.offer_pipeline_service import (
     OfferPipelineService,
 )
@@ -10,10 +25,64 @@ from app.sources.fixture import FixturePerfumeSource
 from app.utils.logger import logger
 
 
-async def main() -> None:
-    logger.info("=================================")
-    logger.info("Perfume Deals Bot iniciado")
-    logger.info("=================================")
+def parse_arguments() -> argparse.Namespace:
+    """
+    Lee los argumentos recibidos desde la terminal.
+    """
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Detector y publicador de ofertas "
+            "de perfumes."
+        )
+    )
+
+    execution_mode = (
+        parser.add_mutually_exclusive_group()
+    )
+
+    execution_mode.add_argument(
+        "--once",
+        action="store_true",
+        help="Ejecuta un solo ciclo y termina.",
+    )
+
+    execution_mode.add_argument(
+        "--watch",
+        action="store_true",
+        help="Ejecuta el bot continuamente.",
+    )
+
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=BOT_RUN_INTERVAL_SECONDS,
+        help=(
+            "Intervalo entre ciclos, en segundos. "
+            "Solo se utiliza con --watch."
+        ),
+    )
+
+    return parser.parse_args()
+
+
+async def run_application(
+    watch: bool,
+    interval_seconds: int,
+) -> None:
+    """
+    Construye e inicia todos los servicios.
+    """
+
+    logger.info(
+        "================================="
+    )
+    logger.info(
+        "Perfume Deals Bot iniciado"
+    )
+    logger.info(
+        "================================="
+    )
 
     database = DatabaseManager()
 
@@ -32,49 +101,58 @@ async def main() -> None:
             scorer=OfferScorer(),
         )
 
-        result = await pipeline.run()
-
-        logger.info(
-            f"Publicaciones procesadas: "
-            f"{result.processed_count}"
-        )
-
-        logger.info(
-            f"Alertas preparadas: "
-            f"{result.alert_count}"
-        )
-
-        for offer in result.alert_candidates:
-            perfume = offer.perfume
-            score = offer.score
-
-            logger.info(
-                "---------------------------------"
-            )
-            logger.info(
-                f"OFERTA | {perfume.title}"
-            )
-            logger.info(
-                f"Precio: ${perfume.price:,.2f}"
-            )
-            logger.info(
-                f"Vendedor: {perfume.seller}"
-            )
-            logger.info(
-                f"Score: {score.total:.2f}/100"
-            )
-            logger.info(
-                f"Nivel: {score.level}"
-            )
-
-            for reason in score.reasons:
-                logger.info(
-                    f"  - {reason}"
+        async with TelegramClient() as telegram:
+            dispatcher = (
+                NotificationDispatcherService(
+                    database=database,
+                    telegram=telegram,
                 )
+            )
+
+            application = ApplicationService(
+                pipeline=pipeline,
+                dispatcher=dispatcher,
+            )
+
+            scheduler = BotScheduler(
+                application=application,
+                interval_seconds=interval_seconds,
+            )
+
+            if watch:
+                await scheduler.run_forever()
+            else:
+                await scheduler.run_once()
+
+    except TelegramClientError as error:
+        logger.error(
+            f"Error de Telegram: {error}"
+        )
 
     finally:
         await database.close()
 
+        logger.info(
+            "Perfume Deals Bot detenido."
+        )
+
+
+def main() -> None:
+    arguments = parse_arguments()
+
+    try:
+        asyncio.run(
+            run_application(
+                watch=arguments.watch,
+                interval_seconds=arguments.interval,
+            )
+        )
+
+    except KeyboardInterrupt:
+        logger.info(
+            "Ejecución detenida por el usuario."
+        )
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

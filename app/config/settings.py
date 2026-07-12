@@ -72,3 +72,65 @@ TELEGRAM_DISABLE_NOTIFICATION = (
         "on",
     }
 )
+
+def get_positive_integer_setting(
+    name: str,
+    default: int,
+    minimum: int = 1,
+) -> int:
+    """
+    Lee un entero positivo desde las variables de entorno.
+    """
+
+    raw_value = os.getenv(
+        name,
+        str(default),
+    ).strip()
+
+    try:
+        value = int(raw_value)
+    except ValueError as error:
+        raise ValueError(
+            f"La variable {name} debe contener un número entero."
+        ) from error
+
+    if value < minimum:
+        raise ValueError(
+            f"La variable {name} debe ser mayor o igual a {minimum}."
+        )
+
+    return value
+
+
+# Ejecución periódica del bot
+BOT_RUN_INTERVAL_SECONDS = get_positive_integer_setting(
+    name="BOT_RUN_INTERVAL_SECONDS",
+    default=900,
+    minimum=30,
+)
+
+# Cantidad máxima de notificaciones enviadas por ciclo
+OUTBOX_BATCH_SIZE = get_positive_integer_setting(
+    name="OUTBOX_BATCH_SIZE",
+    default=20,
+)
+
+# Intentos máximos antes de marcar una notificación como fallida
+OUTBOX_MAX_ATTEMPTS = get_positive_integer_setting(
+    name="OUTBOX_MAX_ATTEMPTS",
+    default=5,
+)
+
+# Espera antes de cada reintento:
+# intento 0: inmediatamente
+# intento 1: 1 minuto
+# intento 2: 5 minutos
+# intento 3: 15 minutos
+# intento 4: 1 hora
+OUTBOX_RETRY_DELAYS_SECONDS = (
+    0,
+    60,
+    300,
+    900,
+    3600,
+)
