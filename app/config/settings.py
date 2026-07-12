@@ -22,9 +22,7 @@ USER_AGENT = (
 )
 
 
-# Telegram
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+
 
 
 # Mercado Libre API
@@ -53,3 +51,24 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "sqlite+aiosqlite:///./data/perfume_deals.db",
 ).strip()
+
+# Telegram
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+
+TELEGRAM_API_BASE_URL = "https://api.telegram.org"
+
+TELEGRAM_DISABLE_NOTIFICATION = (
+    os.getenv(
+        "TELEGRAM_DISABLE_NOTIFICATION",
+        "false",
+    )
+    .strip()
+    .lower()
+    in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+)
