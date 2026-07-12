@@ -16,20 +16,10 @@ from app.config.scoring import (
 from app.models.perfume import Perfume
 from app.utils.logger import logger
 from app.utils.text import normalize_text
+from app.models.price_history import HistoricalPriceStats
 
 
-@dataclass(slots=True, frozen=True)
-class HistoricalPriceStats:
-    """
-    Resumen del historial anterior de un producto.
 
-    Los valores deben calcularse usando observaciones previas,
-    sin incluir el precio que se está evaluando actualmente.
-    """
-
-    lowest_price: float | None = None
-    average_price: float | None = None
-    observations: int = 0
 
 
 @dataclass(slots=True, frozen=True)

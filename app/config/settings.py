@@ -46,3 +46,10 @@ ML_TOKEN_URL = f"{ML_API_BASE_URL}/oauth/token"
 # Tokens OAuth
 ML_ACCESS_TOKEN = os.getenv("ML_ACCESS_TOKEN", "").strip()
 ML_REFRESH_TOKEN = os.getenv("ML_REFRESH_TOKEN", "").strip()
+
+
+# Base de datos
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite+aiosqlite:///./data/perfume_deals.db",
+).strip()

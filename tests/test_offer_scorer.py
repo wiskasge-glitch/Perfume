@@ -1,9 +1,7 @@
 import asyncio
 
-from app.engine.offer_scorer import (
-    HistoricalPriceStats,
-    OfferScorer,
-)
+from app.engine.offer_scorer import OfferScorer
+from app.models.price_history import HistoricalPriceStats
 from app.services.catalog_service import CatalogService
 from app.sources.fixture import FixturePerfumeSource
 from app.utils.logger import logger
