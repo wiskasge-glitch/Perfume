@@ -1,28 +1,35 @@
+import asyncio
+
+from app.services.catalog_service import CatalogService
+from app.sources.fixture import FixturePerfumeSource
 from app.utils.logger import logger
-from app.models.perfume import Perfume
 
 
-def main():
+async def main() -> None:
     logger.info("=================================")
     logger.info("Perfume Deals Bot iniciado")
     logger.info("=================================")
 
-    perfume = Perfume(
-        ml_id="MLM123456",
-        title="Versace Eros EDT 100ml",
-        brand="Versace",
-        price=1299,
-        original_price=1699,
-        discount=23.5,
-        seller="Amora Beauty Market",
-        trusted_seller=True,
-        mercado_lider=True,
-        full=True,
-        url="https://mercadolibre.com.mx",
+    source = FixturePerfumeSource()
+
+    catalog = CatalogService(
+        source=source,
     )
 
-    logger.info(perfume)
+    perfumes = await catalog.get_valid_perfumes()
+
+    logger.info(
+        f"Perfumes preparados: {len(perfumes)}"
+    )
+
+    for perfume in perfumes:
+        logger.info(
+            f"{perfume.ml_id} | "
+            f"{perfume.title} | "
+            f"${perfume.price:,.2f} | "
+            f"{perfume.seller}"
+        )
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
